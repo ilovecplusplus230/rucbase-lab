@@ -120,10 +120,18 @@ void DiskManager::create_file(const std::string &path) {
  * @param {string} &path 文件所在路径
  */
 void DiskManager::destroy_file(const std::string &path) {
-    // Todo:
-    // 调用unlink()函数
-    // 注意不能删除未关闭的文件
-    
+    // 首先检查文件是否存在，避免删除不存在的文件
+    if (!is_file(path)) {
+        throw FileNotFoundError(path); //文件不存在，报错，显示文件存储的路径
+    }
+    // 检查文件是否已经被关闭
+    if (path2fd_.find(path) != path2fd_.end()) {
+        throw FileInUseError(path); //文件正在使用，报错，显示文件存储的路径
+    }
+    // 调用unlink()函数删除文件
+    if (unlink(path.c_str()) < 0) {
+        throw UnixError(); //如果unlink()函数返回值小于0，说明文件删除失败，抛出异常
+    }
 }
 
 
