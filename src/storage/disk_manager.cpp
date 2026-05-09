@@ -44,9 +44,19 @@ void DiskManager::write_page(int fd, page_id_t page_no, const char *offset, int 
 void DiskManager::read_page(int fd, page_id_t page_no, char *offset, int num_bytes) {
     // Todo:
     // 1.lseek()定位到文件头，通过(fd,page_no)可以定位指定页面及其在磁盘文件中的偏移量
-    // 2.调用read()函数
-    // 注意read返回值与num_bytes不等时，throw InternalError("DiskManager::read_page Error");
-
+    // 通过 (fd,page_no)可以定位指定页面及其在磁盘文件中的偏移量
+    off_t offset_in_file = lseek(fd,page_no * PAGE_SIZE, SEEK_SET);
+    if(offset_in_file == -1) {
+        // 如果lseek()函数调用失败，抛出InternalError异常
+        throw InternalError("DiskManager::read_page Error: lseek failed");
+    }
+    // 2.调用read()函数从文件中读取指定数量的字节到内存中
+    // 读取的数据将被存储在offset指向的内存位置
+    ssize_t bytes_read = read(fd, offset, num_bytes);
+    // 如果read()函数返回的字节数与num_bytes不等，抛出InternalError异常
+    if(bytes_read != num_bytes) {
+        throw InternalError("DiskManager::read_page Error: read failed");
+    }
 }
 
 /**
