@@ -141,10 +141,28 @@ void DiskManager::destroy_file(const std::string &path) {
  * @param {string} &path 文件所在路径
  */
 int DiskManager::open_file(const std::string &path) {
-    // Todo:
+    if (!is_file(path)) {
+        throw FileNotFoundError(path); //文件不存在，报错，显示文件存储的路径
+    }
+    // 确保文件没有被重复打开，每个文件只能有一个文件描述符
+    if (path2fd_.find(path) != path2fd_.end()) {
+        throw FileAlreadyOpenError(path); //文件已经打开，报错，显示文件存储的路径
+    }
     // 调用open()函数，使用O_RDWR模式
-    // 注意不能重复打开相同文件，并且需要更新文件打开列表
-
+    // O_RDWR表示以读写模式打开文件，如果文件不存在则返回错误
+    int fd = open(path.c_str(), O_RDWR);
+    // 检查open()函数的返回值，小于0说明文件打开失败，抛出异常
+    if (fd < 0) {
+        throw UnixError(); //打开失败，抛出异常
+    }
+    // 将文件路径与打开的文件描述符添加到映射中
+    // 方便后续操作通过文件路径找到文件描述符
+    path2fd_[path] = fd;
+    // 将文件描述符与文件路径添加到映射中
+    // 方便后续操作通过文件描述符找到文件路径
+    fd2path_[fd] = path;
+    // 返回打开的文件描述符
+    return fd;
 }
 
 /**
