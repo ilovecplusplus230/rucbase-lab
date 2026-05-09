@@ -99,10 +99,20 @@ bool DiskManager::is_file(const std::string &path) {
  * @param {string} &path
  */
 void DiskManager::create_file(const std::string &path) {
-    // Todo:
-    // 调用open()函数，使用O_CREAT模式
-    // 注意不能重复创建相同文件
-    
+    //首先检查文件是否存在，避免重复创建
+    if (is_file(path)) {
+        throw FileAlreadyExistsError(path); //文件存在，报错，显示文件存储的路径
+    }
+    //使用open()函数创建一个新文件，O_CREAT表示如果文件不存在则创建
+    // O_RDWR表示以读写模式打开文件
+    // S_IRUSR | S_IWUSR表示文件权限，允许文件所有者读写文件
+    int fd = open(path.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    // 检查open()函数的返回值，小于0说明文件创建失败，抛出异常
+    if (fd < 0) {
+        throw UnixError();
+    }
+    //关闭文件描述符，仅需创建，无需进一步操作
+    close(fd);
 }
 
 /**
