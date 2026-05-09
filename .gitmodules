@@ -1,4 +1,4 @@
 
 [submodule "deps/googletest"]
 	path = deps/googletest
-	url = https://github.com/google/googletest
+	url = https://gitee.com/mirrors/googletest.git
