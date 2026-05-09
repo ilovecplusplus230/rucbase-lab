@@ -170,12 +170,24 @@ int DiskManager::open_file(const std::string &path) {
  * @param {int} fd 打开的文件的文件句柄
  */
 void DiskManager::close_file(int fd) {
-    // Todo:
-    // 调用close()函数
-    // 注意不能关闭未打开的文件，并且需要更新文件打开列表
-
+    // 首先检查文件描述符是否存在于映射中，确保文件已经被打开
+    if (fd2path_.find(fd) == fd2path_.end()) {
+        throw FileNotOpenError(fd); //文件未打开，报错，显示文件句柄
+    }
+    // 调用close()函数关闭文件
+    // 注意不能关闭未打开的文件
+    if (close(fd) < 0) {
+        throw UnixError(); //关闭失败，抛出异常
+    }
+    // 从映射中移除文件描述符与路径的关联
+    std::string path = fd2path_[fd];
+    // 从fd2path_映射中移除文件描述符与路径的关联
+    // 为了更新文件打开列表，确保文件已经关闭
+    fd2path_.erase(fd);
+    // 从path2fd_映射中移除文件路径与描述符的关联
+    // 为了更新文件打开列表，确保文件已经关闭
+    path2fd_.erase(path);
 }
-
 
 /**
  * @description: 获得文件的大小
