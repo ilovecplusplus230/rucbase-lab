@@ -114,7 +114,7 @@ Page* BufferPoolManager::fetch_page(PageId page_id) {
  */
 bool BufferPoolManager::unpin_page(PageId page_id, bool is_dirty) {
     // 0. lock latch
-    std :: scoped_lock lock{latch_};
+    std :: scoped_lock lock(latch_);
     // 1. 尝试在page_table_中搜寻page_id对应的页P
     auto it = page_table_.find(page_id);
     // 1.1 P在页表中不存在 return false
@@ -157,7 +157,7 @@ bool BufferPoolManager::unpin_page(PageId page_id, bool is_dirty) {
 bool BufferPoolManager::flush_page(PageId page_id) {
     // Todo:
     // 0. lock latch
-    std :: scoped_lock lock{latch_};
+    std :: scoped_lock lock(latch_);
     // 1. 查找页表,尝试获取目标页P
     auto it = page_table_.find(page_id);
     // 1.1 目标页P没有被page_table_记录 ，返回false
@@ -182,7 +182,7 @@ bool BufferPoolManager::flush_page(PageId page_id) {
  */
 Page* BufferPoolManager::new_page(PageId* page_id) {
     // 0. lock latch
-    std :: scoped_lock lock{latch_};
+    std :: scoped_lock lock(latch_);
     // 1.   获得一个可用的frame，若无法获得则返回nullptr
     frame_id_t frame_id;
     if (!find_victim_page(&frame_id)) {
@@ -225,7 +225,7 @@ Page* BufferPoolManager::new_page(PageId* page_id) {
  */
 bool BufferPoolManager::delete_page(PageId page_id) {
     // 0. lock latch
-    std :: scoped_lock lock{latch_};
+    std :: scoped_lock lock(latch_);
     // 1.   在page_table_中查找目标页，若不存在返回true
     auto it = page_table_.find(page_id);
     if (it == page_table_.end()) {
@@ -257,5 +257,15 @@ bool BufferPoolManager::delete_page(PageId page_id) {
  * @param {int} fd 文件句柄
  */
 void BufferPoolManager::flush_all_pages(int fd) {
-    
-}
+    // 0.lock latch
+    std :: scoped_lock lock(latch_);
+    // 1. 遍历所有页，将脏页写回磁盘
+    for (auto& [page_id, frame_id] : page_table_) {
+        if (page_id.fd == fd) {
+            Page* page = &pages_[frame_id];
+            disk_manager_->write_page(page_id.fd, page_id.page_no, 
+                                      page->get_data(), PAGE_SIZE);
+            page->is_dirty_ = false; //将页的is_dirty_标志置为false，表示该页已经被写回磁盘，不再是脏页
+            }
+        }
+    }
