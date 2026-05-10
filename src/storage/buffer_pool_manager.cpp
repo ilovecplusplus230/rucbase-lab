@@ -171,7 +171,7 @@ bool BufferPoolManager::flush_page(PageId page_id) {
     disk_manager_->write_page(page_id.fd, page_id.page_no, page->get_data(), PAGE_SIZE);
     // 3. 更新P的is_dirty_
     page->is_dirty_ = false; //将目标页的is_dirty_标志置为false，表示该页已经被写回磁盘，不再是脏页
-    
+
     return true;
 }
 
@@ -181,12 +181,41 @@ bool BufferPoolManager::flush_page(PageId page_id) {
  * @param {PageId*} page_id 当成功创建一个新的page时存储其page_id
  */
 Page* BufferPoolManager::new_page(PageId* page_id) {
+    // 0. lock latch
+    std :: scoped_lock lock{latch_};
     // 1.   获得一个可用的frame，若无法获得则返回nullptr
+    frame_id_t frame_id;
+    if (!find_victim_page(&frame_id)) {
+        return nullptr;
+    }    
     // 2.   在fd对应的文件分配一个新的page_id
+    page_id -> page_no = disk_manager_->allocate_page(page_id->fd);
+    if (page_id->page_no == INVALID_PAGE_ID) {
+        // 如果分配新的page_id失败，说明磁盘空间不足或文件系统出现问题
+        // 返回nullptr表示创建新页失败
+        return nullptr;
+    }
     // 3.   将frame的数据写回磁盘
+    Page* page = &pages_[frame_id];
+    if (page->is_dirty_) {
+        // 如果可用的帧页是脏页，说明该页的数据已经被修改但尚未写回磁盘
+        // 调用disk_manager_的write_page方法将该页写回磁盘
+        disk_manager_->write_page(page->get_page_id().fd, 
+                                  page->get_page_id().page_no, 
+                                  page->get_data(),PAGE_SIZE);
+    }
+    
     // 4.   固定frame，更新pin_count_
+    page_table_.erase(page->id_); //从页表移除旧的页
+    page->reset_memory(); //重置frame的数据为全0
+    page->id_ = *page_id; //更新frame中页的id为新的page_id
+    page->is_dirty_ = false; //将目标页的is_dirty_标志置为false，表示该页是一个新页，不是脏页
+    page->pin_count_ = 1; //将目标页的pin_count_置为1，表示该页被固定
+    page_table_[*page_id] = frame_id; //将新的页id和帧号添加到页表中
+    replacer_->pin(frame_id); //将新的页所在的帧固定(pin)，即增加pin_count_
+
     // 5.   返回获得的page
-   return nullptr;
+    return page;
 }
 
 /**
