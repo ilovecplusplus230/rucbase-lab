@@ -234,12 +234,12 @@ bool BufferPoolManager::delete_page(PageId page_id) {
     // 2.   若目标页的pin_count不为0，则返回false
     frame_id_t frame_id = it->second;
     Page* page = &pages_[frame_id];
-    if (page->pin_count_ != 0) {
+    if (page->pin_count_ > 0) {
         return false;
     }
     // 3.   将目标页数据写回磁盘，从页表中删除目标页，重置其元数据，将其加入free_list_，返回true
     if (page->is_dirty_) {
-        disk_manager_->write_page(page->id.fd, page->id.page_no, page->get_data(), PAGE_SIZE);
+        disk_manager_->write_page(page->id_.fd, page->id_.page_no, page->get_data(), PAGE_SIZE);
         page ->is_dirty_ = false;
     }
     page_table_.erase(it);
