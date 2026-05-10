@@ -66,9 +66,9 @@ void LRUReplacer::unpin(frame_id_t frame_id) {
         frame_id_t temp;
         victim(&temp);
     }
-    
+
     LRUlist_.push_front(frame_id);
-    LRUHash_[frame_id] = LRUlist_.begin();
+    LRUhash_[frame_id] = LRUlist_.begin();
 }
 
 /**
