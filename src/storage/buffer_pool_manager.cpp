@@ -16,12 +16,22 @@ See the Mulan PSL v2 for more details. */
  * @param {frame_id_t*} frame_id 帧页id指针,返回成功找到的可替换帧id
  */
 bool BufferPoolManager::find_victim_page(frame_id_t* frame_id) {
-    // Todo:
     // 1 使用BufferPoolManager::free_list_判断缓冲池是否已满需要淘汰页面
     // 1.1 未满获得frame
+    if (!free_list_.empty()) {
+        // 如果空闲列表不为空，说明缓冲池还有空闲帧可用
+        // 从空闲列表头部获取一个空闲帧号
+        *frame_id = free_list_.front();
+        // 将该帧号从空闲列表中移除
+        free_list_.pop_front();
+        // 返回成功找到可替换帧
+        return true;
+    }
     // 1.2 已满使用lru_replacer中的方法选择淘汰页面
-
-    return false;
+    // 如果空闲列表为空，说明缓冲池已满
+    // 调用replacer的victim方法选择一个可淘汰的帧
+    // 该方法会根据LRU策略选择最近最少使用的帧进行淘汰
+    return replacer_->victim(frame_id);
 }
 
 /**
