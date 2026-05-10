@@ -113,15 +113,39 @@ Page* BufferPoolManager::fetch_page(PageId page_id) {
  * @param {bool} is_dirty 若目标page应该被标记为dirty则为true，否则为false
  */
 bool BufferPoolManager::unpin_page(PageId page_id, bool is_dirty) {
-    // Todo:
     // 0. lock latch
+    std :: scoped_lock lock{latch_};
     // 1. 尝试在page_table_中搜寻page_id对应的页P
+    auto it = page_table_.find(page_id);
     // 1.1 P在页表中不存在 return false
+    if (it == page_table_.end()) {
+        // 如果目标页在页表中不存在，说明该页不在缓冲池中
+        // 返回false表示取消固定失败
+        return false;
+    }
     // 1.2 P在页表中存在，获取其pin_count_
+    frame_id_t frame_id = it->second; //获取目标页所在的帧号
+    Page* page = &pages_[frame_id]; //获取目标页的指针
     // 2.1 若pin_count_已经等于0，则返回false
+    if (page->pin_count_ <= 0) {
+        // 如果目标页的pin_count_已经等于0，说明该页当前没有被固定
+        // 返回false表示取消固定失败
+        return false;
+    }
     // 2.2 若pin_count_大于0，则pin_count_自减一
+    page->pin_count_--; //将目标页的pin_count_自减一，表示该页被取消固定
     // 2.2.1 若自减后等于0，则调用replacer_的Unpin
+    if (page->pin_count_ == 0) {
+        // 如果目标页的pin_count_自减后等于0，说明该页当前没有被固定
+        // 调用replacer_的unpin方法将该页所在的帧取消固定，即增加可替换帧的数量
+        replacer_->unpin(frame_id);
+    }
     // 3 根据参数is_dirty，更改P的is_dirty_
+    if(is_dirty){
+        // 如果参数is_dirty为true，说明该页应该被标记为脏页
+        // 将目标页的is_dirty_标志置为true，表示该页已经被修改但尚未写回磁盘
+        page->is_dirty_ = true;
+    }
     return true;
 }
 
