@@ -55,9 +55,20 @@ void LRUReplacer::pin(frame_id_t frame_id) {
  * @param {frame_id_t} frame_id 取消固定的frame的id
  */
 void LRUReplacer::unpin(frame_id_t frame_id) {
-    // Todo:
     //  支持并发锁
     //  选择一个frame取消固定
+    std ::scoped_lock lock{latch_};
+    if (LRUhash_.count(frame_id)) {
+        return;
+    }
+
+    if (Size() >= max_size_) {
+        frame_id_t temp;
+        victim(&temp);
+    }
+    
+    LRUlist_.push_front(frame_id);
+    LRUHash_[frame_id] = LRUlist_.begin();
 }
 
 /**
