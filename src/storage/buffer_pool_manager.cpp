@@ -157,11 +157,21 @@ bool BufferPoolManager::unpin_page(PageId page_id, bool is_dirty) {
 bool BufferPoolManager::flush_page(PageId page_id) {
     // Todo:
     // 0. lock latch
+    std :: scoped_lock lock{latch_};
     // 1. 查找页表,尝试获取目标页P
+    auto it = page_table_.find(page_id);
     // 1.1 目标页P没有被page_table_记录 ，返回false
+    if (it == page_table_.end()) {
+        return false;
+    }
+    // 1.2 目标页P被page_table_记录，获取其frame_id和page指针
+    frame_id_t frame_id = it->second; //获取目标页所在的帧号
+    Page* page = &pages_[frame_id]; //获取目标页的指针
     // 2. 无论P是否为脏都将其写回磁盘。
+    disk_manager_->write_page(page_id.fd, page_id.page_no, page->get_data(), PAGE_SIZE);
     // 3. 更新P的is_dirty_
-   
+    page->is_dirty_ = false; //将目标页的is_dirty_标志置为false，表示该页已经被写回磁盘，不再是脏页
+    
     return true;
 }
 
