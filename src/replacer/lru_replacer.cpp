@@ -24,10 +24,15 @@ bool LRUReplacer::victim(frame_id_t* frame_id) {
     // 它能够避免死锁发生，其构造函数能够自动进行上锁操作，析构函数会对互斥量进行解锁操作，保证线程安全。
     std::scoped_lock lock{latch_};  //  如果编译报错可以替换成其他lock
 
-    // Todo:
     //  利用lru_replacer中的LRUlist_,LRUHash_实现LRU策略
     //  选择合适的frame指定为淘汰页面,赋值给*frame_id
-
+    if (LRUlist_.empty()) {
+        return false;
+    }
+    
+    *frame_id = LRUlist_.back();
+    LRUlist_.pop_back();
+    LRUHash_.erase(*frame_id);
     return true;
 }
 
