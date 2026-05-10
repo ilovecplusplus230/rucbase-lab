@@ -119,7 +119,7 @@ bool DiskManager::is_file(const std::string &path) {
 void DiskManager::create_file(const std::string &path) {
     //首先检查文件是否存在，避免重复创建
     if (is_file(path)) {
-        throw FileAlreadyExistsError(path); //文件存在，报错，显示文件存储的路径
+        throw FileExistsError(path); //文件存在，报错，显示文件存储的路径
     }
     //使用open()函数创建一个新文件，O_CREAT表示如果文件不存在则创建
     // O_RDWR表示以读写模式打开文件
@@ -144,7 +144,7 @@ void DiskManager::destroy_file(const std::string &path) {
     }
     // 检查文件是否已经被关闭
     if (path2fd_.find(path) != path2fd_.end()) {
-        throw FileInUseError(path); //文件正在使用，报错，显示文件存储的路径
+        throw FileNotClosedError(path); //文件正在使用，报错，显示文件存储的路径
     }
     // 调用unlink()函数删除文件
     if (unlink(path.c_str()) < 0) {
@@ -164,7 +164,7 @@ int DiskManager::open_file(const std::string &path) {
     }
     // 确保文件没有被重复打开，每个文件只能有一个文件描述符
     if (path2fd_.find(path) != path2fd_.end()) {
-        throw FileAlreadyOpenError(path); //文件已经打开，报错，显示文件存储的路径
+        throw FileNotClosedError(path); //文件已经打开，报错，显示文件存储的路径
     }
     // 调用open()函数，使用O_RDWR模式
     // O_RDWR表示以读写模式打开文件，如果文件不存在则返回错误
