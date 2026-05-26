@@ -143,7 +143,7 @@ RmPageHandle RmFileHandle::create_new_page_handle() {
     // 2.更新page handle中的相关信息
     // 3.更新file_hdr_
     PageId new_page_id = {.fd = fd_, .page_no = INVALID_PAGE_ID};
-    Page* new_page = buffer_pool_manager_->new_page(new_page_id);
+    Page* new_page = buffer_pool_manager_->new_page(&new_page_id);
     if (!new_page) {
         throw InternalError("No free pages available");
     }
