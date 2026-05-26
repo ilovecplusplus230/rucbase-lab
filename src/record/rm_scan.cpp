@@ -16,9 +16,9 @@ See the Mulan PSL v2 for more details. */
  * @param file_handle
  */
 RmScan::RmScan(const RmFileHandle *file_handle) : file_handle_(file_handle) {
-    // Todo:
     // 初始化file_handle和rid（指向第一个存放了记录的位置）
-
+    rid_ = {.page_no = RM_FIRST_RECORD_PAGE, .slot_no = -1};
+    next();
 }
 
 /**
