@@ -47,14 +47,29 @@ std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* cont
  * 7. 返回新记录的RID
  */
 Rid RmFileHandle::insert_record(char* buf, Context* context) {
-    // Todo:
     // 1. 获取当前未满的page handle
+    RmPageHandle page_handle = create_page_handle();
     // 2. 在page handle中找到空闲slot位置
-    // 3. 将buf复制到空闲slot位置
-    // 4. 更新page_handle.page_hdr中的数据结构
-    // 注意考虑插入一条记录后页面已满的情况，需要更新file_hdr_.first_free_page_no
-
-    return Rid{-1, -1};
+    int slot_no = Bitmap::first_bit(false,page_handle.bitmap,file_hdr_.num_records_per_page);
+    // 3.设置位图标记槽位已使用
+    Bitmap::set(page_handle.bitmap, slot_no);
+    // 4. 将buf复制到空闲slot位置
+    memcpy(page_handle.get_slot(slot_no),buf,file_hdr_.record_size);
+    // 5. 更新页面记录计数
+    page_handle.page_hdr->num_records++;
+    // 6. 如果页面变满，更新空闲页链表
+    if(page_handle.page_hdr->num_records == file_hdr_.num_records_per_page){
+        // 从空闲页链表中移除该页面
+        file_hdr_.first_free_page_no = page_handle.page_hdr->next_free_page_no;
+        // 当前页标记为无后续空闲页
+        page_handle.page_hdr->next_free_page_no = RM_NO_PAGE;
+    }
+    // 7. 构造新记录的RID
+    Rid rid{page_handle.page->get_page_id().page_no, slot_no};
+    // 8. 解除页面锁定
+    buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), true);
+    
+    return rid;
 }
 
 /**
