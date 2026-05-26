@@ -10,6 +10,9 @@ See the Mulan PSL v2 for more details. */
 
 #include "rm_file_handle.h"
 
+#include "common/context.h"
+#include "storage/buffer_pool_manager.h"
+#include "storage/disk_manager.h"
 /**
  * @description: 获取当前表中记录号为rid的记录
  * @param {Rid&} rid 记录号，指定记录的位置
