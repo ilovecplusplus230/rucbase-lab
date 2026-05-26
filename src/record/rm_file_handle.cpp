@@ -139,12 +139,26 @@ RmPageHandle RmFileHandle::fetch_page_handle(int page_no) const {
  * @return {RmPageHandle} 新的PageHandle
  */
 RmPageHandle RmFileHandle::create_new_page_handle() {
-    // Todo:
     // 1.使用缓冲池来创建一个新page
     // 2.更新page handle中的相关信息
     // 3.更新file_hdr_
-
-    return RmPageHandle(&file_hdr_, nullptr);
+    PageId new_page_id = {.fd = fd_, .page_no = INVALID_PAGE_ID};
+    Page* new_page = buffer_pool_manager_->new_page(new_page_id);
+    if (!new_page) {
+        throw InternalError("No free pages available");
+    }
+    // 初始化页面头
+    RmPageHdr page_hdr{};
+    page_hdr.next_free_page_no = -1;
+    page_hdr.num_records = 0;
+    memcpy(new_page->get_data(), &page_hdr, sizeof(RmPageHdr));
+    // 初始化位图全为0
+    char* bitmap = new_page->get_data() + sizeof(RmPageHdr);
+    Bitmap::init(bitmap,file_hdr_.bitmap_size);
+    // 更新文件头信息
+    file_hdr_.num_pages++;
+    disk_manager_->write_page(fd_,RM_FILE_HDR_PAGE,(char*)&file_hdr_,sizeof(file_hdr_));
+    return RmPageHandle(&file_hdr_, new_page);
 }
 
 /**
