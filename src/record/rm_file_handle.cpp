@@ -68,17 +68,8 @@ Rid RmFileHandle::insert_record(char* buf, Context* context) {
     Rid rid{page_handle.page->get_page_id().page_no, slot_no};
     // 8. 解除页面锁定
     buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), true);
-    
-    return rid;
-}
 
-/**
- * @description: 在当前表中的指定位置插入一条记录
- * @param {Rid&} rid 要插入记录的位置
- * @param {char*} buf 要插入记录的数据
- */
-void RmFileHandle::insert_record(const Rid& rid, char* buf) {
-    
+    return rid;
 }
 
 /**
