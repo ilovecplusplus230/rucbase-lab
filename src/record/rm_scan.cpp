@@ -58,7 +58,8 @@ void RmScan::next() {
  * @brief ​ 判断是否到达文件末尾
  */
 bool RmScan::is_end() const {
-    // Todo: 修改返回值
+    // 修改返回值
+    return rid_.page_no == RM_NO_PAGE;
 
     return false;
 }
