@@ -119,11 +119,19 @@ void RmFileHandle::update_record(const Rid& rid, char* buf, Context* context) {
  * @return {RmPageHandle} 指定页面的句柄
  */
 RmPageHandle RmFileHandle::fetch_page_handle(int page_no) const {
-    // Todo:
-    // 使用缓冲池获取指定页面，并生成page_handle返回给上层
-    // if page_no is invalid, throw PageNotExistError exception
-
-    return RmPageHandle(&file_hdr_, nullptr);
+    // 1. 检查页面号范围
+    if(page_no < 0 || page_no >= file_hdr_.num_pages){
+        throw PageNotExistError("",page_no);
+    }
+    // 构造页面ID（文件描述符+页面号）
+    PageId page_id = {.fd = fd_, .page_no = page_no};
+    // 2. 从缓冲池获取页面
+    Page* page = buffer_pool_manager_->fetch_page(page_id);
+    if (!page) {
+        throw PageNotExistError("Failed to fetch page", page_no);
+    }
+    // 3. 构造页面句柄（自动解析页面头、位图和槽位）
+    return RmPageHandle(&file_hdr_, page);
 }
 
 /**
