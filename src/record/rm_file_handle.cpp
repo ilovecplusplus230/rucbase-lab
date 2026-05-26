@@ -186,9 +186,14 @@ RmPageHandle RmFileHandle::create_page_handle() {
  * @description: 当一个页面从没有空闲空间的状态变为有空闲空间状态时，更新文件头和页头中空闲页面相关的元数据
  */
 void RmFileHandle::release_page_handle(RmPageHandle&page_handle) {
-    // Todo:
     // 当page从已满变成未满，考虑如何更新：
     // 1. page_handle.page_hdr->next_free_page_no
     // 2. file_hdr_.first_free_page_no
-    
+    if (page_handle.page_hdr->next_free_page_no == RM_NO_PAGE) {
+        // 将当前页面插入空闲链表头部
+        page_handle.page_hdr->next_free_page_no = file_hdr_.first_free_page_no;
+        file_hdr_.first_free_page_no = page_handle.page->get_page_id().page_no;
+        // 将更新后的文件头立即持久化到硬盘
+        disk_manager_->write_page(fd_, RM_FILE_HDR_PAGE, (char*)&file_hdr_, sizeof(file_hdr_));
+    }
 }
