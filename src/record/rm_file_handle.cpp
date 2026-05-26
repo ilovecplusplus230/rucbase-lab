@@ -102,10 +102,12 @@ void RmFileHandle::delete_record(const Rid& rid, Context* context) {
  * @param {Context*} context
  */
 void RmFileHandle::update_record(const Rid& rid, char* buf, Context* context) {
-    // Todo:
     // 1. 获取指定记录所在的page handle
-    // 2. 更新记录
-
+    RmPageHandle page_handle = fetch_page_handle(rid.page_no);
+    // 2. 更新记录数据
+    memcpy(page_handle.get_slot(rid.slot_no), buf, file_hdr_.record_size);
+    // 3. 解除页面锁定
+    buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), true);
 }
 
 /**
