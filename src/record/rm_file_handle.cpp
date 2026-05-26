@@ -17,11 +17,17 @@ See the Mulan PSL v2 for more details. */
  * @return {unique_ptr<RmRecord>} rid对应的记录对象指针
  */
 std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* context) const {
-    // Todo:
     // 1. 获取指定记录所在的page handle
     // 2. 初始化一个指向RmRecord的指针（赋值其内部的data和size）
-
-    return nullptr;
+    RmPageHandle page_handle = fetch_page_handle(rid.page_no);
+    // 调用 fetch_page_handle() 获取指定页面的 page handle，并封装为 RmPageHandle 对象
+    char* slot = page_handle.get_slot(rid.slot_no);
+    // 通过 get_slot 计算目标槽位的物理地址：槽位地址 = slots起始地址 + slot_no * record_size
+    auto record = std::make_unique<RmRecord>(file_hdr_.record_size);
+    memcpy(record->data, slot, file_hdr_.record_size);
+    // 根据文件头中定义的 record_size 分配内存，并将槽位数据复制到 RmRecord 中
+    buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), false);
+    return record;
 }
 
 /**
