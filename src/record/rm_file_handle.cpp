@@ -168,13 +168,18 @@ RmPageHandle RmFileHandle::create_new_page_handle() {
  * @note pin the page, remember to unpin it outside!
  */
 RmPageHandle RmFileHandle::create_page_handle() {
-    // Todo:
     // 1. 判断file_hdr_中是否还有空闲页
-    //     1.1 没有空闲页：使用缓冲池来创建一个新page；可直接调用create_new_page_handle()
-    //     1.2 有空闲页：直接获取第一个空闲页
-    // 2. 生成page handle并返回给上层
-
-    return RmPageHandle(&file_hdr_, nullptr);
+    // 1.没有空闲页可用
+    if (file_hdr_.first_free_page_no == RM_NO_PAGE) {
+        return create_new_page_handle();
+    }
+    // 2.有空闲页可用，直接获取
+    RmPageHandle page_handle = fetch_page_handle(file_hdr_.first_free_page_no);
+    // 更新file_hdr_中的first_free_page_no为当前页的下一个空闲页
+    file_hdr_.first_free_page_no = page_handle.page_hdr->next_free_page_no;
+    // 将更新后的文件头立即持久化到硬盘
+    disk_manager_->write_page(fd_, RM_FILE_HDR_PAGE, (char*)&file_hdr_, sizeof(file_hdr_));
+    return page_handle;
 }
 
 /**
