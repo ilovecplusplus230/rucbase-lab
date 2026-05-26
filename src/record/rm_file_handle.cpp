@@ -86,7 +86,7 @@ void RmFileHandle::delete_record(const Rid& rid, Context* context) {
     // 2. 记录删除前页面是否已满
     bool was_full = (page_handle.page_hdr->num_records == file_hdr_.num_records_per_page);
     // 3. 设置位图标记槽位未使用
-    Bitmap::set(page_handle.bitmap, rid.slot_no);
+    Bitmap::reset(page_handle.bitmap, rid.slot_no);
     // 4. 更新页面记录计数
     page_handle.page_hdr->num_records--;
     // 5. 如果页面从满变为未满，更新空闲页链表
@@ -124,7 +124,7 @@ void RmFileHandle::update_record(const Rid& rid, char* buf, Context* context) {
 RmPageHandle RmFileHandle::fetch_page_handle(int page_no) const {
     // 1. 检查页面号范围
     if(page_no < 0 || page_no >= file_hdr_.num_pages){
-        throw PageNotExistError("",page_no);
+        throw PageNotExistError("", page_no);
     }
     // 构造页面ID（文件描述符+页面号）
     PageId page_id = {.fd = fd_, .page_no = page_no};
