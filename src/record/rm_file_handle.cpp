@@ -27,6 +27,7 @@ std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* cont
     memcpy(record->data, slot, file_hdr_.record_size);
     // 根据文件头中定义的 record_size 分配内存，并将槽位数据复制到 RmRecord 中
     buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), false);
+    // 操作完成后解除页面锁定(pin_count--)，如果页面被修改了则传入true，否则传入false
     return record;
 }
 
@@ -35,6 +36,15 @@ std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* cont
  * @param {char*} buf 要插入的记录的数据
  * @param {Context*} context
  * @return {Rid} 插入的记录的记录号（位置）
+ *
+ * 实现步骤：
+ * 1. 获取一个有空闲槽位的页面（优先复用空闲页，无则创建新页）
+ * 2. 在页面中查找第一个空间键位
+ * 3. 更新位图标记槽位已使用
+ * 4. 讲记录数据复制到槽位中
+ * 5. 更新页面记录计数
+ * 6. 如果页面变满，更新空闲页链表
+ * 7. 返回新记录的RID
  */
 Rid RmFileHandle::insert_record(char* buf, Context* context) {
     // Todo:
