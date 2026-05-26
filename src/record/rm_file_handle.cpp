@@ -78,10 +78,20 @@ Rid RmFileHandle::insert_record(char* buf, Context* context) {
  * @param {Context*} context
  */
 void RmFileHandle::delete_record(const Rid& rid, Context* context) {
-    // Todo:
     // 1. 获取指定记录所在的page handle
-    // 2. 更新page_handle.page_hdr中的数据结构
-    // 注意考虑删除一条记录后页面未满的情况，需要调用release_page_handle()
+    RmPageHandle page_handle = fetch_page_handle(rid.page_no);
+    // 2. 记录删除前页面是否已满
+    bool was_full = (page_handle.page_hdr->num_records == file_hdr_.num_records_per_page);
+    // 3. 设置位图标记槽位未使用
+    Bitmap::set(page_handle.bitmap, rid.slot_no);
+    // 4. 更新页面记录计数
+    page_handle.page_hdr->num_records--;
+    // 5. 如果页面从满变为未满，更新空闲页链表
+    if(was_full){
+        release_page_handle(page_handle);
+    }
+    // 6. 解除页面锁定
+    buffer_pool_manager_->unpin_page(page_handle.page->get_page_id(), true);
 }
 
 
