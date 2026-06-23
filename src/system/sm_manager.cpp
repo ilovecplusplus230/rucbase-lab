@@ -138,7 +138,30 @@ void SmManager::flush_meta() {
  * @description: 关闭数据库并把数据落盘
  */
 void SmManager::close_db() {
-    
+    // 检查数据库是否已经打开
+    if (db_.name_.empty()) {
+        throw DatabaseNotFoundError(db_.name_);
+    }
+    flush_meta();
+    db_.name_.clear();
+    db_.tabs_.clear();
+
+    // 记录文件落盘
+    for (auto& [_, file_handle] : fhs_) {
+        rm_manager_->close_file(file_handle.get());
+    }
+
+    // 索引文件落盘
+    for (auto& [_, index_handle] : ihs_) {
+        ix_manager_->close_index(index_handle.get());
+    }
+
+    fhs_.clear();
+    ihs_.clear();
+
+    if (chdir("..") < 0) {  // 返回上一级目录
+        throw UnixError();
+    }
 }
 
 /**
