@@ -76,7 +76,23 @@ class SeqScanExecutor : public AbstractExecutor {
      *
      */
     void nextTuple() override {
-        
+        if (scan_->is_end()) {
+            rid_ = Rid{-1, -1};  // 扫完了
+            return;
+        }
+        scan_->next();              // 移动到下一条记录
+        while (!scan_->is_end()) {  // 从当前 scan_ 位置继续扫描
+            rid_ = scan_->rid();
+            auto record = fh_->get_record(rid_, context_);
+            if (!record) {
+                scan_->next();
+                continue;
+            }
+            if (conds_.empty() || eval_conds(record.get(), conds_, cols_)) {
+                break;
+            }
+            scan_->next();
+        }
     }
 
     /**
