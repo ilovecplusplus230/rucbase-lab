@@ -37,6 +37,40 @@ class DeleteExecutor : public AbstractExecutor {
     }
 
     std::unique_ptr<RmRecord> Next() override {
+        // 遍历所有待删除记录的 Rid
+        for (const auto &rid : rids_) {
+            // 读取待删除记录
+            std::unique_ptr<RmRecord> rec = fh_->get_record(rid, context_);
+
+            // 删除索引项:数据库需要维护数据一致性，删除记录前必须先删除其关联的索引项。
+            for (size_t i = 0; i < tab_.indexes.size(); ++i) {
+                auto &index = tab_.indexes[i];
+                auto ih = sm_manager_->ihs_
+                              .at(sm_manager_->get_ix_manager()->get_index_name(
+                                  tab_name_, index.cols))
+                              .get();
+
+                // 键缓冲区
+                char *key = new char[index.col_tot_len];
+                int offset = 0;
+
+                // 记录中提取索引键
+                for (size_t j = 0; j < index.col_num; ++j) {
+                    memcpy(key + offset, rec->data + index.cols[j].offset,
+                           index.cols[j].len);
+                    offset += index.cols[j].len;
+                }
+
+                // 调用索引管理器删除索引项
+                ih->delete_entry(key, context_->txn_);
+
+                delete[] key;
+            }
+
+            // 删除记录本身:核心功能是标记记录槽位为空（slot为空），并更新文件头信息
+            fh_->delete_record(rid, context_);
+        }
+        // 删除操作无实际数据返回
         return nullptr;
     }
 
