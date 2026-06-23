@@ -64,7 +64,7 @@ class ProjectionExecutor : public AbstractExecutor {
 
     Rid &rid() override { return _abstract_rid; }
 
-    bool is_end() const override { return true; }
+    bool is_end() const override { return prev_->is_end(); }
     
     std::string getType() override { return "ProjectionExecutor"; }
 
