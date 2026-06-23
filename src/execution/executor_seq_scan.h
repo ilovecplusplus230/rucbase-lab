@@ -106,7 +106,7 @@ class SeqScanExecutor : public AbstractExecutor {
 
     Rid &rid() override { return rid_; }
 
-    bool is_end() const override { return true; }
+    bool is_end() const override { return scan_->is_end(); }
     
     std::string getType() override { return "SeqScanExecutor"; }
 
@@ -116,7 +116,39 @@ class SeqScanExecutor : public AbstractExecutor {
 
     private:
     bool eval_cond(const RmRecord *rec, const Condition &cond, const std::vector<ColMeta> &rec_cols) {
-        return true;
+        auto left_col = get_col(cols_, cond.lhs_col);
+        char *left_val = rec->data + left_col->offset;
+
+        char *right_val = nullptr;
+        ColType col_type;
+        int len = left_col->len;
+
+        if (cond.is_rhs_val) {
+            right_val = cond.rhs_val.raw->data;
+            col_type = cond.rhs_val.type;
+        } else {
+            auto right_col = get_col(cols_, cond.rhs_col);
+            right_val = rec->data + right_col->offset;
+            col_type = right_col->type;
+        }
+
+        int cmp_result = ix_compare(left_val, right_val, col_type, len);
+        switch (cond.op) {
+            case OP_EQ:
+                return cmp_result == 0;
+            case OP_NE:
+                return cmp_result != 0;
+            case OP_LT:
+                return cmp_result < 0;
+            case OP_GT:
+                return cmp_result > 0;
+            case OP_LE:
+                return cmp_result <= 0;
+            case OP_GE:
+                return cmp_result >= 0;
+            default:
+                return false;
+        }
     }
 
     bool eval_conds(const RmRecord *rec, const std::vector<Condition> &conds, const std::vector<ColMeta> &rec_cols) {
