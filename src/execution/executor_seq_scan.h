@@ -50,7 +50,25 @@ class SeqScanExecutor : public AbstractExecutor {
      *
      */
     void beginTuple() override {
-        
+         scan_ = std::make_unique<RmScan>(fh_);
+        while (!scan_->is_end()) {  // 循环扫描直到满足条件或文件结束
+            rid_ =
+                scan_->rid();  // 存储当前满足条件的元组在表中的物理位置（页号
+                               // + 槽号）
+            auto record = fh_->get_record(rid_, context_);
+            if (!record) {
+                scan_->next();
+                continue;
+            }
+            if (conds_.empty() || eval_conds(record.get(), conds_, cols_)) {
+                break;
+            }
+            scan_->next();
+        }
+        if (scan_->is_end()) {
+            rid_ = Rid{-1, -1};  // 扫描结束时设置 rid_ = Rid{-1, -1}
+            return;
+        }
     }
 
     /**
