@@ -112,7 +112,30 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
 
     private:
     bool eval_cond(const RmRecord *lhs_rec, const RmRecord *rhs_rec, const Condition &cond, const std::vector<ColMeta> &rec_cols) {
-        return true;
+        auto left_col = left_->get_col(left_->cols(), cond.lhs_col);
+        char *left_val = lhs_rec->data + left_col->offset;
+
+        auto right_col = right_->get_col(right_->cols(), cond.rhs_col);
+        char *right_val = rhs_rec->data + right_col->offset;
+
+        int cmp_result =
+            ix_compare(left_val, right_val, right_col->type, right_col->len);
+        switch (cond.op) {
+            case OP_EQ:
+                return cmp_result == 0;
+            case OP_NE:
+                return cmp_result != 0;
+            case OP_LT:
+                return cmp_result < 0;
+            case OP_GT:
+                return cmp_result > 0;
+            case OP_LE:
+                return cmp_result <= 0;
+            case OP_GE:
+                return cmp_result >= 0;
+            default:
+                return false;
+        }
     }
 
     bool eval_conds(const RmRecord *lhs_rec, const RmRecord *rhs_rec, const std::vector<Condition> &conds, const std::vector<ColMeta> &rec_cols) {
