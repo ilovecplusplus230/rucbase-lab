@@ -85,7 +85,44 @@ void SmManager::drop_db(const std::string& db_name) {
  * @param {string&} db_name 数据库名称，与文件夹同名
  */
 void SmManager::open_db(const std::string& db_name) {
-    
+    // 数据库不存在
+    if (!is_dir(db_name)) {
+        throw DatabaseNotFoundError(db_name);
+    }
+
+    // 数据库已经打开
+    if (!db_.name_.empty()) {
+        throw DatabaseExistsError(db_name);
+    }
+
+    // 进入数据库目录
+    if (chdir(db_name.c_str()) < 0) {
+        throw UnixError();
+    }
+
+    // 加载数据库元数据
+    std::ifstream ifs(DB_META_NAME);
+    if (!ifs) {
+        throw UnixError();
+    }
+    ifs >> db_;  // 使用重载的>>操作符从文件读取数据库元数据
+
+    // 打开所有表文件
+    for (auto& entry : db_.tabs_) {
+        auto& tab = entry.second;
+        fhs_[tab.name] = rm_manager_->open_file(tab.name);
+
+        // 打开该表的所有索引
+        for (auto& index : tab.indexes) {
+            // 使用正确的方式获取索引名称并打开索引
+            std::string index_name =
+                ix_manager_->get_index_name(tab.name, index.cols);
+            ihs_[index_name] = ix_manager_->open_index(tab.name, index.cols);
+        }
+    }
+
+    // 打开日志文件
+    disk_manager_->open_file(LOG_FILE_NAME);
 }
 
 /**
