@@ -44,20 +44,65 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
     }
 
     void beginTuple() override {
-
+        left_->beginTuple();
+        right_->beginTuple();
     }
 
     void nextTuple() override {
-        
+        // 右表未结束：仅移动右表指针（内层循环）。
+        // 右表结束：
+        //  移动左表指针（外层循环）。
+        //  若左表结束，标记 isend = true。
+        //  否则重置右表到起始位置（开始新一轮内层循环）。
+        // 通过模拟嵌套循环（左表为外层，右表为内层）实现连接。
+        if (!right_->is_end()) {
+            right_->nextTuple();
+        }
+
+        while (!left_->is_end()) {
+            auto left_rec = left_->Next();
+            while (!right_->is_end()) {
+                auto right_rec = right_->Next();
+                if (eval_conds(left_rec.get(), right_rec.get(), fed_conds_,
+                               cols_)) {
+                    return;
+                }
+                right_->nextTuple();
+            }
+
+            left_->nextTuple();
+            if (left_->is_end()) break;
+
+            right_->beginTuple();
+        }
+        isend = true;
     }
 
     std::unique_ptr<RmRecord> Next() override {
+        // 若满足条件，将左右元组拼接成新记录返回。
+        while (!isend) {
+            std::unique_ptr<RmRecord> left_rec = left_->Next();
+            std::unique_ptr<RmRecord> right_rec = right_->Next();
+
+            if (eval_conds(left_rec.get(), right_rec.get(), fed_conds_,
+                           cols_)) {
+                std::unique_ptr<RmRecord> join_rec =
+                    std::make_unique<RmRecord>(len_);
+                memcpy(join_rec->data, left_rec->data, left_->tupleLen());
+                memcpy(join_rec->data + left_->tupleLen(), right_rec->data,
+                       right_->tupleLen());
+                return join_rec;
+            }
+
+            nextTuple();
+        }
+
         return nullptr;
     }
 
     Rid &rid() override { return _abstract_rid; }
 
-    bool is_end() const override { return true; }
+    bool is_end() const override { return left_->is_end(); }
     
     std::string getType() override { return "NestedLoopJoinExecutor"; }
 
